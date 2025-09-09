@@ -1,6 +1,6 @@
 {
   "name": "@ringkubd/dynamic-roles-nextjs",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Next.js client package for Dynamic Roles Laravel backend API",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -24,12 +24,12 @@
   ],
   "author": {
     "name": "Anwar",
-    "email": "anwar@gunma.com"
+    "email": "ajr.jahid@gmail.com"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/anwar/dynamic-roles-nextjs"
+    "url": "https://github.com/ringkubd/dynamic-roles-nextjs"
   },
   "files": [
     "dist",
