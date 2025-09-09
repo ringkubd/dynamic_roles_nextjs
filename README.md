@@ -288,8 +288,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Author
 
-**Anwar** - [anwar@gunma.com](mailto:anwar@gunma.com)
+**Anwar Jahid** - [ajr.jahid@gmail.com](mailto:ajr.jahid@gmail.com)
 
 ## Support
 
-For support, email anwar@gunma.com or create an issue in the repository.
+For support, email ajr.jahid@gmail.com or create an issue in the repository.
