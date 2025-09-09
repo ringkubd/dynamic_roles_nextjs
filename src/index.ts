@@ -9,6 +9,9 @@ export * from './types';
 // React Hooks
 export * from './hooks';
 
+// Components
+export * from './components';
+
 // Re-export for convenience
 export {
   usePermissions,
