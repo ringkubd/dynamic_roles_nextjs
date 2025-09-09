@@ -1,6 +1,6 @@
 {
   "name": "@ringkubd/dynamic-roles-nextjs",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Next.js client package for Dynamic Roles Laravel backend API",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

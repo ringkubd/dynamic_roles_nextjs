@@ -10,6 +10,17 @@ npm install @ringkubd/dynamic-roles-nextjs
 yarn add @ringkubd/dynamic-roles-nextjs
 ```
 
+## Features
+
+- 🔐 **Complete Permission Management** - Hooks for users, roles, permissions, and URLs
+- 🎛️ **Interactive Role Editor** - React component for managing role permissions
+- 📱 **Responsive Design** - Works perfectly on desktop and mobile
+- 🚀 **TypeScript First** - Full type safety and IntelliSense support
+- 🔌 **Easy Integration** - Simple hooks-based API for React/Next.js
+- 📊 **Cache Management** - Built-in caching with health monitoring
+- 🎨 **Customizable UI** - Style with your own CSS or use included classes
+- 🌐 **Laravel Integration** - Works seamlessly with Dynamic Roles Laravel package
+
 ## Quick Start
 
 ### 1. Setup the Client
@@ -145,6 +156,56 @@ console.log(health.database); // database connection status
 console.log(health.cache); // cache status
 ```
 
+## Components
+
+### RolePermissionSetup
+
+A comprehensive React component for managing role permissions with an interactive UI.
+
+```typescript
+import { RolePermissionSetup } from '@ringkubd/dynamic-roles-nextjs';
+
+function AdminPanel() {
+  const handleSave = (roleId: number, permissionIds: number[]) => {
+    console.log(`Role ${roleId} updated with permissions:`, permissionIds);
+    // Show success message
+  };
+
+  const handleError = (error: string) => {
+    console.error('Error updating permissions:', error);
+    // Show error message
+  };
+
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-6">Role Management</h1>
+      <RolePermissionSetup 
+        onSave={handleSave}
+        onError={handleError}
+        className="bg-white rounded-lg shadow"
+      />
+    </div>
+  );
+}
+```
+
+#### Props
+
+| Prop | Type | Description | Default |
+|------|------|-------------|---------|
+| `className` | `string` | Additional CSS classes for styling | `''` |
+| `onSave` | `(roleId: number, permissionIds: number[]) => void` | Callback when permissions are saved | `undefined` |
+| `onError` | `(error: string) => void` | Callback when an error occurs | `undefined` |
+
+#### Features
+
+- **Role Selection**: Click on any role to view and edit its permissions
+- **Permission Categories**: Permissions are automatically grouped by category (user, admin, content, etc.)
+- **Real-time Changes**: See unsaved changes with visual indicators
+- **Bulk Operations**: Select all/none buttons for each permission category
+- **Loading States**: Built-in loading and error handling
+- **Responsive Design**: Works on desktop and mobile devices
+
 ## API Client Usage
 
 You can also use the API client directly for more advanced operations:
@@ -272,6 +333,73 @@ export default function Dashboard() {
     </div>
   );
 }
+```
+
+## Laravel Blade Views (Alternative to Next.js)
+
+The Dynamic Roles Laravel package also includes traditional Blade views for applications that don't use API-only architecture. This provides a complete web interface for managing roles and permissions.
+
+### Available Routes
+
+Once you enable web routes in your Laravel application, you'll have access to:
+
+```php
+// Dashboard with statistics
+/dynamic-roles
+
+// Role management
+/dynamic-roles/roles                    // List all roles
+/dynamic-roles/roles/{role}            // View role details
+/dynamic-roles/roles/{role}/edit       // Edit role permissions
+
+// Permission management  
+/dynamic-roles/permissions             // List all permissions
+
+// URL management
+/dynamic-roles/urls                    // Manage route permissions
+/dynamic-roles/urls/{id}              // View URL details
+/dynamic-roles/urls/{id}/edit         // Edit URL permissions
+
+// Menu management
+/dynamic-roles/menus                  // Manage dynamic menus
+/dynamic-roles/menus/{id}             // View menu details
+
+// Cache management
+/dynamic-roles/cache                  // View cache statistics
+/dynamic-roles/cache/clear            // Clear cache operations
+```
+
+### Configuration
+
+Enable web routes in your Laravel configuration:
+
+```php
+// config/dynamic-roles.php
+return [
+    'enable_api_routes' => true,    // For Next.js integration
+    'enable_web_routes' => true,    // For Blade views
+    // ...other config
+];
+```
+
+### Features
+
+- **Dashboard**: Overview with role/permission statistics
+- **Role Permission Editor**: Interactive checkboxes for assigning permissions
+- **Responsive Design**: Modern Tailwind CSS styling
+- **Permission Categories**: Organized permission groups
+- **Real-time Feedback**: Success/error messages
+- **Cache Management**: Clear cache with statistics
+
+### Accessing the Interface
+
+After installation, simply navigate to `/dynamic-roles` in your Laravel application to access the management interface. Make sure you're authenticated and have the necessary permissions to access these routes.
+
+```php
+// Add middleware to your routes if needed
+Route::middleware(['auth', 'role:admin'])->group(function () {
+    // Dynamic roles routes will be automatically registered
+});
 ```
 
 ## Contributing
