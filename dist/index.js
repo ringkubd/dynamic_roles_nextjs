@@ -25,6 +25,8 @@ Object.defineProperty(exports, "getClient", { enumerable: true, get: function ()
 __exportStar(require("./types"), exports);
 // React Hooks
 __exportStar(require("./hooks"), exports);
+// Components
+__exportStar(require("./components"), exports);
 // Re-export for convenience
 var hooks_1 = require("./hooks");
 Object.defineProperty(exports, "usePermissions", { enumerable: true, get: function () { return hooks_1.usePermissions; } });
