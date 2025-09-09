@@ -6,7 +6,7 @@ This directory contains example usage of the Dynamic Roles Next.js client packag
 
 ```typescript
 // lib/dynamic-roles.ts
-import { createClient } from '@anwar/dynamic-roles-nextjs';
+import { createClient } from '@ringkubd/dynamic-roles-nextjs';
 
 const client = createClient({
   apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000',
@@ -24,7 +24,7 @@ export default client;
 
 ```typescript
 // components/PermissionGuard.tsx
-import { usePermissions } from '@anwar/dynamic-roles-nextjs';
+import { usePermissions } from '@ringkubd/dynamic-roles-nextjs';
 import { ReactNode } from 'react';
 
 interface PermissionGuardProps {
@@ -52,7 +52,7 @@ export default function PermissionGuard({
 
 ```typescript
 // components/DynamicNav.tsx
-import { useMenus } from '@anwar/dynamic-roles-nextjs';
+import { useMenus } from '@ringkubd/dynamic-roles-nextjs';
 import Link from 'next/link';
 
 export default function DynamicNav() {
@@ -82,7 +82,7 @@ export default function DynamicNav() {
 
 ```typescript
 // pages/admin/users.tsx
-import { usePermissions, usePermissionCheck } from '@anwar/dynamic-roles-nextjs';
+import { usePermissions, usePermissionCheck } from '@ringkubd/dynamic-roles-nextjs';
 import PermissionGuard from '../../components/PermissionGuard';
 
 export default function UsersPage() {

@@ -5,9 +5,9 @@ A comprehensive Next.js client package for interfacing with the Dynamic Roles La
 ## Installation
 
 ```bash
-npm install @anwar/dynamic-roles-nextjs
+npm install @ringkubd/dynamic-roles-nextjs
 # or
-yarn add @anwar/dynamic-roles-nextjs
+yarn add @ringkubd/dynamic-roles-nextjs
 ```
 
 ## Quick Start
@@ -18,7 +18,7 @@ First, configure the API client in your Next.js app:
 
 ```typescript
 // lib/dynamic-roles.ts
-import { createClient } from '@anwar/dynamic-roles-nextjs';
+import { createClient } from '@ringkubd/dynamic-roles-nextjs';
 
 const client = createClient({
   apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000',
@@ -39,7 +39,7 @@ export default client;
 
 ```typescript
 // components/PermissionsList.tsx
-import { usePermissions, useRoles } from '@anwar/dynamic-roles-nextjs';
+import { usePermissions, useRoles } from '@ringkubd/dynamic-roles-nextjs';
 
 export default function PermissionsList() {
   const { permissions, loading, error, refetch } = usePermissions();
@@ -150,7 +150,7 @@ console.log(health.cache); // cache status
 You can also use the API client directly for more advanced operations:
 
 ```typescript
-import { getClient } from '@anwar/dynamic-roles-nextjs';
+import { getClient } from '@ringkubd/dynamic-roles-nextjs';
 
 const client = getClient();
 
@@ -190,7 +190,7 @@ import type {
   User,
   ApiResponse,
   PaginatedResponse 
-} from '@anwar/dynamic-roles-nextjs';
+} from '@ringkubd/dynamic-roles-nextjs';
 
 // All API responses are properly typed
 const roles: Role[] = await client.getUserRoles();
@@ -219,7 +219,7 @@ interface DynamicRolesConfig {
 All hooks provide error states and the API client throws typed errors:
 
 ```typescript
-import { ApiError } from '@anwar/dynamic-roles-nextjs';
+import { ApiError } from '@ringkubd/dynamic-roles-nextjs';
 
 try {
   const permissions = await client.getUserPermissions();
@@ -238,7 +238,7 @@ try {
 // app/dashboard/page.tsx
 'use client';
 
-import { usePermissions, useMenus } from '@anwar/dynamic-roles-nextjs';
+import { usePermissions, useMenus } from '@ringkubd/dynamic-roles-nextjs';
 
 export default function Dashboard() {
   const { permissions, loading: permissionsLoading } = usePermissions();
