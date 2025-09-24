@@ -145,7 +145,7 @@ export const RolePermissionSetup: React.FC<RolePermissionSetupProps> = ({
 
     setSaving(true);
     try {
-      await client.assignRolePermissions(roleId, { permission_ids: permissionChanges[roleId] });
+      await client.assignRolePermissions(roleId, { permissions: permissionChanges[roleId] });
       debugLog(`Successfully saved permissions for role ${roleId}`);
       
       // Update local state

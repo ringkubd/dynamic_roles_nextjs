@@ -99,7 +99,7 @@ export interface AssignUrlPermissionsRequest {
 }
 
 export interface AssignRolePermissionsRequest {
-  permission_ids: number[];
+  permissions: number[];
 }
 
 export interface CreateMenuRequest {
