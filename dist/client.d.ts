@@ -2,11 +2,22 @@ import { DynamicRolesConfig, PaginatedResponse, DynamicUrl, DynamicMenu, Role, P
 export declare class DynamicRolesClient {
     private api;
     private config;
+    private csrfToken;
     constructor(config: DynamicRolesConfig);
     private setupInterceptors;
     private getAuthToken;
+    private getCsrfToken;
+    private fetchCsrfToken;
+    private ensureCsrfToken;
     setAuthToken(token: string): void;
     removeAuthToken(): void;
+    initializeSession(): Promise<void>;
+    login(credentials: {
+        email: string;
+        password: string;
+    }): Promise<any>;
+    logout(): Promise<void>;
+    refreshSession(): Promise<void>;
     getUrls(page?: number, perPage?: number): Promise<PaginatedResponse<DynamicUrl>>;
     getUrl(id: number): Promise<DynamicUrl>;
     createUrl(data: CreateUrlRequest): Promise<DynamicUrl>;
@@ -30,6 +41,8 @@ export declare class DynamicRolesClient {
     refreshCache(): Promise<boolean>;
     healthCheck(): Promise<boolean>;
 }
-export declare const createClient: (config: DynamicRolesConfig) => DynamicRolesClient;
+export declare const createClient: (config: DynamicRolesConfig) => Promise<DynamicRolesClient>;
 export declare const getClient: () => DynamicRolesClient;
+export declare const createSanctumClient: (config: Omit<DynamicRolesConfig, "authMethod">) => Promise<DynamicRolesClient>;
+export declare const createTokenClient: (config: Omit<DynamicRolesConfig, "authMethod">) => Promise<DynamicRolesClient>;
 //# sourceMappingURL=client.d.ts.map

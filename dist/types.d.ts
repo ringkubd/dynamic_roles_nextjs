@@ -1,4 +1,3 @@
-/// <reference types="react" />
 export interface User {
     id: number;
     name: string;
@@ -99,12 +98,22 @@ export interface CreateMenuRequest {
 }
 export interface UpdateMenuRequest extends Partial<CreateMenuRequest> {
 }
+export type AuthMethod = 'token' | 'session';
+export interface SessionAuthConfig {
+    csrfTokenUrl?: string;
+    csrfCookieName?: string;
+    csrfHeaderName?: string;
+    withCredentials?: boolean;
+    sanctumPath?: string;
+}
 export interface DynamicRolesConfig {
     apiBaseUrl: string;
     apiVersion?: string;
     headers?: Record<string, string>;
     timeout?: number;
     retryAttempts?: number;
+    authMethod?: AuthMethod;
+    sessionAuth?: SessionAuthConfig;
     cache?: {
         enabled: boolean;
         ttl: number;
@@ -146,13 +155,13 @@ export interface MenuComponentProps {
 export interface PermissionGateProps {
     permission: string | string[];
     role?: string | string[];
-    fallback?: React.ReactNode;
-    children: React.ReactNode;
+    fallback?: any;
+    children: any;
 }
 export interface RoleGateProps {
     role: string | string[];
-    fallback?: React.ReactNode;
-    children: React.ReactNode;
+    fallback?: any;
+    children: any;
 }
 export interface ApiError {
     message: string;

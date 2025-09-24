@@ -3,14 +3,23 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getClient = exports.createClient = exports.DynamicRolesClient = void 0;
+exports.createTokenClient = exports.createSanctumClient = exports.getClient = exports.createClient = exports.DynamicRolesClient = void 0;
 const axios_1 = __importDefault(require("axios"));
 class DynamicRolesClient {
     constructor(config) {
+        this.csrfToken = null;
         this.config = {
             apiVersion: 'v1',
             timeout: 10000,
             retryAttempts: 3,
+            authMethod: 'token',
+            sessionAuth: {
+                csrfTokenUrl: '/sanctum/csrf-cookie',
+                csrfCookieName: 'XSRF-TOKEN',
+                csrfHeaderName: 'X-XSRF-TOKEN',
+                withCredentials: true,
+                sanctumPath: '/sanctum',
+            },
             cache: {
                 enabled: true,
                 ttl: 300000, // 5 minutes
@@ -18,8 +27,9 @@ class DynamicRolesClient {
             ...config,
         };
         this.api = axios_1.default.create({
-            baseURL: `${this.config.apiBaseUrl}/api/dynamic-roles`,
+            baseURL: `${this.config.apiBaseUrl}/dynamic-roles`,
             timeout: this.config.timeout,
+            withCredentials: this.config.authMethod === 'session' ? this.config.sessionAuth?.withCredentials : false,
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
@@ -29,21 +39,55 @@ class DynamicRolesClient {
         this.setupInterceptors();
     }
     setupInterceptors() {
-        // Request interceptor for auth token
-        this.api.interceptors.request.use((config) => {
-            const token = this.getAuthToken();
-            if (token) {
-                config.headers.Authorization = `Bearer ${token}`;
+        // Request interceptor for authentication
+        this.api.interceptors.request.use(async (config) => {
+            if (this.config.authMethod === 'token') {
+                // Token-based authentication
+                const token = this.getAuthToken();
+                if (token) {
+                    config.headers.Authorization = `Bearer ${token}`;
+                }
+            }
+            else if (this.config.authMethod === 'session') {
+                // Session-based authentication with CSRF protection
+                await this.ensureCsrfToken();
+                const csrfToken = this.getCsrfToken();
+                if (csrfToken) {
+                    const headerName = this.config.sessionAuth?.csrfHeaderName || 'X-XSRF-TOKEN';
+                    config.headers[headerName] = csrfToken;
+                }
+                // Ensure credentials are included for session auth
+                config.withCredentials = this.config.sessionAuth?.withCredentials ?? true;
             }
             return config;
         }, (error) => Promise.reject(error));
         // Response interceptor for error handling
-        this.api.interceptors.response.use((response) => response, (error) => {
+        this.api.interceptors.response.use((response) => response, async (error) => {
             const apiError = {
                 message: error.response?.data?.message || error.message,
                 status: error.response?.status || 500,
                 errors: error.response?.data?.errors,
             };
+            // Handle CSRF token expiration for session auth
+            if (this.config.authMethod === 'session' &&
+                error.response?.status === 419 // Laravel's CSRF token mismatch status
+            ) {
+                try {
+                    // Refresh CSRF token and retry the request
+                    await this.fetchCsrfToken();
+                    const originalRequest = error.config;
+                    const csrfToken = this.getCsrfToken();
+                    if (csrfToken && originalRequest) {
+                        const headerName = this.config.sessionAuth?.csrfHeaderName || 'X-XSRF-TOKEN';
+                        originalRequest.headers[headerName] = csrfToken;
+                        return this.api.request(originalRequest);
+                    }
+                }
+                catch (retryError) {
+                    // If retry fails, return the original error
+                    return Promise.reject(apiError);
+                }
+            }
             return Promise.reject(apiError);
         });
     }
@@ -54,6 +98,40 @@ class DynamicRolesClient {
         }
         return null;
     }
+    getCsrfToken() {
+        if (typeof window === 'undefined')
+            return null;
+        const cookieName = this.config.sessionAuth?.csrfCookieName || 'XSRF-TOKEN';
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === cookieName) {
+                return decodeURIComponent(value);
+            }
+        }
+        return this.csrfToken;
+    }
+    async fetchCsrfToken() {
+        if (this.config.authMethod !== 'session')
+            return;
+        try {
+            const csrfUrl = this.config.sessionAuth?.csrfTokenUrl || '/sanctum/csrf-cookie';
+            const baseUrl = this.config.apiBaseUrl.replace('/api', ''); // Remove /api if present
+            await axios_1.default.get(`${baseUrl}${csrfUrl}`, {
+                withCredentials: this.config.sessionAuth?.withCredentials || true,
+            });
+            // Token should now be in cookies
+            this.csrfToken = this.getCsrfToken();
+        }
+        catch (error) {
+            console.warn('Failed to fetch CSRF token:', error);
+        }
+    }
+    async ensureCsrfToken() {
+        if (this.config.authMethod === 'session' && !this.getCsrfToken()) {
+            await this.fetchCsrfToken();
+        }
+    }
     setAuthToken(token) {
         if (typeof window !== 'undefined') {
             localStorage.setItem('auth_token', token);
@@ -63,6 +141,54 @@ class DynamicRolesClient {
         if (typeof window !== 'undefined') {
             localStorage.removeItem('auth_token');
             sessionStorage.removeItem('auth_token');
+        }
+    }
+    // Session-based authentication methods
+    async initializeSession() {
+        if (this.config.authMethod === 'session') {
+            await this.fetchCsrfToken();
+        }
+    }
+    async login(credentials) {
+        if (this.config.authMethod === 'session') {
+            await this.ensureCsrfToken();
+            const response = await this.api.post('/login', credentials);
+            return response.data;
+        }
+        else {
+            // For token-based auth, assume the API returns a token
+            const response = await this.api.post('/login', credentials);
+            if (response.data.data?.token) {
+                this.setAuthToken(response.data.data.token);
+            }
+            return response.data;
+        }
+    }
+    async logout() {
+        try {
+            if (this.config.authMethod === 'session') {
+                await this.api.post('/logout');
+                this.csrfToken = null;
+            }
+            else {
+                await this.api.post('/logout');
+                this.removeAuthToken();
+            }
+        }
+        catch (error) {
+            // Even if logout fails, clear local auth data
+            if (this.config.authMethod === 'token') {
+                this.removeAuthToken();
+            }
+            else {
+                this.csrfToken = null;
+            }
+            throw error;
+        }
+    }
+    async refreshSession() {
+        if (this.config.authMethod === 'session') {
+            await this.fetchCsrfToken();
         }
     }
     // URL Management
@@ -142,15 +268,15 @@ class DynamicRolesClient {
     }
     // User Permissions & Roles
     async getUserPermissions() {
-        const response = await this.api.get('/user/permissions');
+        const response = await this.api.get('/permissions');
         return response.data.data;
     }
     async getUserRoles() {
-        const response = await this.api.get('/user/roles');
+        const response = await this.api.get('/roles');
         return response.data.data;
     }
     async getUserMenus() {
-        const response = await this.api.get('/user/menus');
+        const response = await this.api.get('/menus');
         return response.data.data;
     }
     // Cache Management
@@ -176,8 +302,12 @@ class DynamicRolesClient {
 exports.DynamicRolesClient = DynamicRolesClient;
 // Singleton instance
 let clientInstance = null;
-const createClient = (config) => {
+const createClient = async (config) => {
     clientInstance = new DynamicRolesClient(config);
+    // Initialize session if using session-based auth
+    if (config.authMethod === 'session') {
+        await clientInstance.initializeSession();
+    }
     return clientInstance;
 };
 exports.createClient = createClient;
@@ -188,4 +318,20 @@ const getClient = () => {
     return clientInstance;
 };
 exports.getClient = getClient;
+// Helper function to create client with session auth for Laravel Sanctum
+const createSanctumClient = async (config) => {
+    return (0, exports.createClient)({
+        ...config,
+        authMethod: 'session',
+    });
+};
+exports.createSanctumClient = createSanctumClient;
+// Helper function to create client with token auth
+const createTokenClient = async (config) => {
+    return (0, exports.createClient)({
+        ...config,
+        authMethod: 'token',
+    });
+};
+exports.createTokenClient = createTokenClient;
 //# sourceMappingURL=client.js.map

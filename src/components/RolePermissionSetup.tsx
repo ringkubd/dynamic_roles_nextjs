@@ -7,6 +7,7 @@ interface RolePermissionSetupProps {
   className?: string;
   onSave?: (roleId: number, permissionIds: number[]) => void;
   onError?: (error: string) => void;
+  debug?: boolean; // Optional debug mode - defaults to process.env.NODE_ENV === 'development'
 }
 
 interface RoleWithPermissions extends Role {
@@ -16,7 +17,8 @@ interface RoleWithPermissions extends Role {
 export const RolePermissionSetup: React.FC<RolePermissionSetupProps> = ({
   className = '',
   onSave,
-  onError
+  onError,
+  debug
 }) => {
   const { roles, loading: rolesLoading, error: rolesError } = useRoles();
   const { permissions, loading: permissionsLoading, error: permissionsError } = usePermissions();
@@ -29,26 +31,66 @@ export const RolePermissionSetup: React.FC<RolePermissionSetupProps> = ({
 
   const client = getClient();
 
+  // Determine debug mode - use prop or auto-detect development environment
+  const isDebugMode = debug !== undefined ? debug : (
+    typeof window !== 'undefined' && 
+    ((window as any).__DEV__ === true || 
+     (window as any).location?.hostname === 'localhost' ||
+     (window as any).location?.hostname === '127.0.0.1')
+  );
+
+  // Debug logging helper
+  const debugLog = React.useCallback((message: string, data?: any) => {
+    if (isDebugMode) {
+      console.log(`[RolePermissionSetup Debug] ${message}`, data || '');
+    }
+  }, [isDebugMode]);
+
+  // Initial debug log
+  React.useEffect(() => {
+    if (isDebugMode) {
+      debugLog('Component initialized', {
+        rolesLoading,
+        permissionsLoading,
+        rolesCount: roles.length,
+        permissionsCount: permissions.length,
+        debugMode: isDebugMode
+      });
+    }
+  }, [debugLog, isDebugMode, rolesLoading, permissionsLoading, roles.length, permissions.length]);
+
   // Load role permissions when component mounts
   useEffect(() => {
     const loadData = async () => {
-      if (!roles.length) return;
+      if (!roles.length) {
+        debugLog('No roles found, skipping permission loading');
+        return;
+      }
       
+      debugLog('Loading role permissions', { roleCount: roles.length, roles });
       setLoadingRolePermissions(true);
+      
       try {
         const rolesWithPermissions: RoleWithPermissions[] = await Promise.all(
           roles.map(async (role) => {
             try {
+              debugLog(`Loading permissions for role: ${role.name}`, { roleId: role.id });
               const rolePerms = await client.getRolePermissions(role.id);
-              return { ...role, permissions: rolePerms };
+              const validPerms = Array.isArray(rolePerms) ? rolePerms : [];
+              debugLog(`Loaded ${validPerms.length} permissions for role: ${role.name}`, validPerms);
+              return { ...role, permissions: validPerms };
             } catch (error) {
+              debugLog(`Failed to load permissions for role ${role.id}`, error);
               console.error(`Failed to load permissions for role ${role.id}:`, error);
               return { ...role, permissions: [] };
             }
           })
         );
+        
+        debugLog('All role permissions loaded successfully', rolesWithPermissions);
         setRolePermissions(rolesWithPermissions);
       } catch (error) {
+        debugLog('Failed to load role permissions', error);
         console.error('Failed to load role permissions:', error);
         onError?.('Failed to load role permissions');
       } finally {
@@ -57,21 +99,32 @@ export const RolePermissionSetup: React.FC<RolePermissionSetupProps> = ({
     };
 
     loadData();
-  }, [roles, client, onError]);
+  }, [roles, client, onError, debugLog]);
 
   const getRolePermissionIds = (roleId: number): number[] => {
     if (permissionChanges[roleId]) {
+      debugLog(`Using unsaved changes for role ${roleId}`, permissionChanges[roleId]);
       return permissionChanges[roleId];
     }
     const role = rolePermissions.find(r => r.id === roleId);
-    return role?.permissions.map(p => p.id) || [];
+    const permissionIds = role?.permissions?.map(p => p.id) || [];
+    debugLog(`Getting permission IDs for role ${roleId}`, { role: role?.name, permissionIds });
+    return permissionIds;
   };
 
   const handlePermissionToggle = (roleId: number, permissionId: number) => {
     const currentPermissions = getRolePermissionIds(roleId);
-    const newPermissions = currentPermissions.includes(permissionId)
+    const isCurrentlySelected = currentPermissions.indexOf(permissionId) !== -1;
+    const newPermissions = isCurrentlySelected
       ? currentPermissions.filter(id => id !== permissionId)
-      : [...currentPermissions, permissionId];
+      : currentPermissions.concat([permissionId]);
+    
+    debugLog(`Permission toggle for role ${roleId}`, {
+      permissionId,
+      isCurrentlySelected,
+      currentCount: currentPermissions.length,
+      newCount: newPermissions.length
+    });
     
     setPermissionChanges(prev => ({
       ...prev,
@@ -80,11 +133,20 @@ export const RolePermissionSetup: React.FC<RolePermissionSetupProps> = ({
   };
 
   const saveRolePermissions = async (roleId: number) => {
-    if (!permissionChanges[roleId]) return;
+    if (!permissionChanges[roleId]) {
+      debugLog(`No changes to save for role ${roleId}`);
+      return;
+    }
+
+    debugLog(`Saving permissions for role ${roleId}`, {
+      permissionIds: permissionChanges[roleId],
+      count: permissionChanges[roleId].length
+    });
 
     setSaving(true);
     try {
       await client.assignRolePermissions(roleId, { permission_ids: permissionChanges[roleId] });
+      debugLog(`Successfully saved permissions for role ${roleId}`);
       
       // Update local state
       setRolePermissions(prev => 
@@ -92,7 +154,9 @@ export const RolePermissionSetup: React.FC<RolePermissionSetupProps> = ({
           role.id === roleId 
             ? { 
                 ...role, 
-                permissions: permissions.filter(p => permissionChanges[roleId].includes(p.id))
+                permissions: permissionChanges[roleId] 
+                  ? permissions.filter(p => permissionChanges[roleId].indexOf(p.id) !== -1)
+                  : []
               }
             : role
         )
@@ -106,6 +170,7 @@ export const RolePermissionSetup: React.FC<RolePermissionSetupProps> = ({
 
       onSave?.(roleId, permissionChanges[roleId]);
     } catch (error: any) {
+      debugLog(`Failed to save permissions for role ${roleId}`, error);
       console.error('Failed to save role permissions:', error);
       onError?.(error.message || 'Failed to save role permissions');
     } finally {
@@ -117,15 +182,26 @@ export const RolePermissionSetup: React.FC<RolePermissionSetupProps> = ({
     return permissionChanges[roleId] !== undefined;
   };
 
-  const getPermissionsByCategory = () => {
+  const getPermissionsByCategory = (): Record<string, Permission[]> => {
     const categories: Record<string, Permission[]> = {};
+    if (!Array.isArray(permissions)) {
+      debugLog('Permissions is not an array', permissions);
+      return categories;
+    }
+    
+    debugLog(`Categorizing ${permissions.length} permissions`);
+    
     permissions.forEach(permission => {
-      const category = permission.name.split('-')[0] || 'general';
-      if (!categories[category]) {
-        categories[category] = [];
+      if (permission && permission.name) {
+        const category = permission.name.split('-')[0] || 'general';
+        if (!categories[category]) {
+          categories[category] = [];
+        }
+        categories[category].push(permission);
       }
-      categories[category].push(permission);
     });
+    
+    debugLog('Permission categories created', Object.keys(categories).map(cat => `${cat}: ${categories[cat].length}`));
     return categories;
   };
 
@@ -172,6 +248,22 @@ export const RolePermissionSetup: React.FC<RolePermissionSetupProps> = ({
 
   return (
     <div className={`p-6 ${className}`}>
+      {isDebugMode && (
+        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+          <div className="flex items-center">
+            <svg className="h-5 w-5 text-yellow-400 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <span className="text-sm font-medium text-yellow-800">Debug Mode Enabled</span>
+          </div>
+          <div className="mt-2 text-xs text-yellow-700">
+            Roles: {rolePermissions.length} | Permissions: {permissions.length} | 
+            Changes: {Object.keys(permissionChanges).length} | 
+            Loading: {loadingRolePermissions ? 'Yes' : 'No'}
+          </div>
+        </div>
+      )}
+      
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Role Permission Setup</h2>
         <p className="text-gray-600">Manage permissions for each role in your application.</p>
@@ -232,14 +324,16 @@ export const RolePermissionSetup: React.FC<RolePermissionSetupProps> = ({
               </div>
               <div className="p-4">
                 <div className="space-y-6">
-                  {Object.entries(permissionCategories).map(([category, categoryPermissions]) => (
+                  {Object.keys(permissionCategories).map((category: string) => {
+                    const categoryPermissions = permissionCategories[category];
+                    return (
                     <div key={category}>
                       <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-3">
                         {category}
                       </h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {categoryPermissions.map((permission) => {
-                          const isChecked = getRolePermissionIds(selectedRole).includes(permission.id);
+                        {categoryPermissions.map((permission: Permission) => {
+                          const isChecked = getRolePermissionIds(selectedRole).indexOf(permission.id) !== -1;
                           return (
                             <label
                               key={permission.id}
@@ -264,7 +358,8 @@ export const RolePermissionSetup: React.FC<RolePermissionSetupProps> = ({
                         })}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
