@@ -114,6 +114,17 @@ export interface CreateMenuRequest {
 
 export interface UpdateMenuRequest extends Partial<CreateMenuRequest> {}
 
+// Authentication Types
+export type AuthMethod = 'token' | 'session';
+
+export interface SessionAuthConfig {
+  csrfTokenUrl?: string;
+  csrfCookieName?: string;
+  csrfHeaderName?: string;
+  withCredentials?: boolean;
+  sanctumPath?: string;
+}
+
 // Configuration Types
 export interface DynamicRolesConfig {
   apiBaseUrl: string;
@@ -121,6 +132,8 @@ export interface DynamicRolesConfig {
   headers?: Record<string, string>;
   timeout?: number;
   retryAttempts?: number;
+  authMethod?: AuthMethod;
+  sessionAuth?: SessionAuthConfig;
   cache?: {
     enabled: boolean;
     ttl: number;
@@ -170,14 +183,14 @@ export interface MenuComponentProps {
 export interface PermissionGateProps {
   permission: string | string[];
   role?: string | string[];
-  fallback?: React.ReactNode;
-  children: React.ReactNode;
+  fallback?: any;
+  children: any;
 }
 
 export interface RoleGateProps {
   role: string | string[];
-  fallback?: React.ReactNode;
-  children: React.ReactNode;
+  fallback?: any;
+  children: any;
 }
 
 // Error Types
